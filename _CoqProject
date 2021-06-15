@@ -2,6 +2,7 @@
 
 hoarelogicsemantics.v
 partialhoarelogic.v
+partialhoarelogicrules.v
 totalhoarelogic.v
 hoarelogic.v 
 exgcd.v
