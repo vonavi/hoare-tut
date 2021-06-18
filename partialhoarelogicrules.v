@@ -11,7 +11,7 @@ Module PartialHoareLogicRules (HD: HoareLogicDefs).
 
   Lemma synt_wp_skip: forall {pre: Pred}, pre |= synt_wp Iskip pre.
   Proof.
-    intro pre. unfold synt_wp. auto.
+    auto.
   Qed.
 
   Lemma wp_skip: forall {pre: Pred}, pre |= Iskip {= pre =}.
@@ -52,7 +52,7 @@ Module PartialHoareLogicRules (HD: HoareLogicDefs).
       pre |= Iif cond p q {= post =}.
   Proof.
     intros cond p q pre post H1 H2.
-    apply soundness, synt_wp_if; apply completeness; assumption.
+    apply soundness, synt_wp_if; now apply completeness.
   Qed.
 
 
@@ -64,8 +64,8 @@ Module PartialHoareLogicRules (HD: HoareLogicDefs).
     intros p q pre post mid H1 H2. unfold synt_wp. fold synt_wp.
     remember (synt_wp q post) as mid'.
     assert (synt_wp p mid |= synt_wp p mid') as H.
-    - apply (synt_wp_monotonic p mid mid' H2).
-    - intros e Hpre. specialize (H1 e Hpre). apply (H e H1).
+    - now eapply synt_wp_monotonic.
+    - intros e Hpre. specialize (H1 e Hpre). exact (H e H1).
   Qed.
 
   Lemma wp_seq:
@@ -73,7 +73,7 @@ Module PartialHoareLogicRules (HD: HoareLogicDefs).
       pre |= p {= mid =} -> mid |= q {= post =} -> pre |= Iseq p q {= post =}.
   Proof.
     intros p q pre post mid H1 H2.
-    apply soundness, (synt_wp_seq mid); apply completeness; assumption.
+    apply soundness, (synt_wp_seq mid); now apply completeness.
   Qed.
 
 
@@ -91,8 +91,30 @@ Module PartialHoareLogicRules (HD: HoareLogicDefs).
       (fun e => inv e /\ E.eval cond e = true) |= p {= inv =} ->
       inv |= Iwhile cond p {= fun e => E.eval cond e = false /\ inv e =}.
   Proof.
-    intros cond p inv H. apply soundness, synt_wp_while, completeness.
-    assumption.
+    intros cond p inv H. now apply soundness, synt_wp_while, completeness.
   Qed.
+
+
+Lemma synt_unwind_while:
+  forall {p: E.Expr bool} {c: ImpProg} {pre post: Pred},
+    pre |= synt_wp (Iwhile p c) post ->
+    pre |= synt_wp (Iif p (Iseq c (Iwhile p c)) Iskip) post.
+Proof.
+  intros p c pre post. unfold synt_wp. fold synt_wp.
+  intros Hinv e Hpre. specialize (Hinv e Hpre). destruct Hinv as [inv Hinv].
+  destruct Hinv as [Hinv Hpost]. split.
+  - intro Hcond. eapply synt_wp_monotonic with (post1:=inv).
+    + intros e' Hinv'. exists inv. now split.
+    + destruct Hpost as [_ Htrue]. exact (Htrue e Hinv Hcond).
+  - destruct Hpost as [Hfalse _]. exact (Hfalse e Hinv).
+Qed.
+
+Lemma unwind_while:
+  forall {p: E.Expr bool} {c: ImpProg} {pre post: Pred},
+    pre |= Iwhile p c {= post =} ->
+    pre |= Iif p (Iseq c (Iwhile p c)) Iskip {= post =}.
+Proof.
+  intros p c pre post H. now eapply soundness, synt_unwind_while, completeness.
+Qed.
 
 End PartialHoareLogicRules.
